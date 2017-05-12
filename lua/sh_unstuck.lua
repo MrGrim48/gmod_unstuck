@@ -1,8 +1,6 @@
 --[[
 sh_unstuck.lua
 
-Copyright© Nekom Glew, 2017
-
 A player can type !stuck or !unstuck; In doing so, this script
 will attempt to move the player to a vacant area based on the players
 hull and if the new position is within line of sight of the stuck player to

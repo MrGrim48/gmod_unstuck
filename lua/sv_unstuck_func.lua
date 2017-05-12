@@ -1,8 +1,6 @@
 --[[
 sv_unstuck_func.lua
 
-Copyright© Nekom Glew, 2017
-
 --]]
 
 

@@ -1,8 +1,6 @@
 --[[
 sv_unstuck_table.lua
 
-Copyright© Nekom Glew, 2017
-
 --]]
 
 Unstuck.ToUnstuck = {}

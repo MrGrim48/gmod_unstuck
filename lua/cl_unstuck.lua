@@ -1,8 +1,6 @@
 --[[
 cl_unstuck_table.lua
 
-Copyright© Nekom Glew, 2017
-
 This is kinda messy and just quickly put together.
 
 --]]

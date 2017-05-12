@@ -49,14 +49,6 @@ function Unstuck.Start( ply )
 		return
 	end
 	
-	--[[---------Optional Code--------]]--
-	-- This code is for my custom verion of Prop Hunt and can be removed
-	if ply:Team() == TEAM_PROPS && ply:GetNWBool( "PhysicsMode" ) then
-		ply:SetNWBool( "PhysicsMode", false )
-		Props.PhysicsMode.SetPhysicsMode( ply, false )
-	end
-	--------------------------------------
-	
 	-- Clears the current debug lines
 	net.Start( "Unstuck.Debug" )
 	net.WriteString( "new" )

@@ -18,6 +18,12 @@ Unstuck.MaxDepth = 3 -- MaxDepth is related to the line of sight. Initially it's
 	-- from the player to the new position. Incrementing until the max depth, it will
 	-- chain the line of sight from the last possible position.
 	-- Think snake.
+Unstuck.AdminRanks = {
+	"moderator" = true,
+	"admin" = true,
+	"superadmin" = true,
+	"owner" = true,
+}
 
 if SERVER then
 	

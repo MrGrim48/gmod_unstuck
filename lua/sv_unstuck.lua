@@ -66,7 +66,7 @@ function Unstuck.Start( ply )
 
 -- Alert staff of any attempts
 	for k,v in pairs( player.GetAll() ) do
-		if (v:CheckGroup( "moderator" ) || v:IsAdmin() || v:IsSuperAdmin()) && v != ply then
+		if (Unstuck.AdminRanks[v:GetUserGroup()] || v:IsAdmin() || v:IsSuperAdmin()) && v != ply then
 			v:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,0,0), ply:Nick(), Color(255,255,255), " used the Unstuck command." )
 		end
 	end

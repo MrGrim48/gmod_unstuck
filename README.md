@@ -6,3 +6,5 @@ Configuration is in the sh_unstuck.lua file.
 
 Type !stuck or !unstuck in chat to attemp to unstuck.
 If it fails, it will simply respawn the player.
+
+This was primarily modified for prop hunt although it should work for any gamemode.

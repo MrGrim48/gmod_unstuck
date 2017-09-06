@@ -18,13 +18,14 @@ function Unstuck.Queue( ply )
 	maxBound.z = maxBound.z - minBound.z
 	minBound.z = 0
 	
-	net.Start( "Unstuck.Debug" )
-	net.WriteString( "add" )
-	net.WriteString( "box" )
-	net.WriteVector( ply:GetPos()+minBound )
-	net.WriteVector( ply:GetPos()+maxBound )
-	net.WriteColor( Color(255,150,150) )
-	net.Send( ply )
+	Unstuck.DebugEvent( 
+		ply, 
+		Unstuck.Enumeration.Debug.COMMAND_ADD, 
+		Unstuck.Enumeration.Debug.NOUN_BOX, 
+		ply:GetPos()+minBound, 
+		ply:GetPos()+maxBound, 
+		Color(255,150,150) 
+	)
 	
 	Unstuck.ToUnstuck[ply] = Unstuck.AddLayer( ply, ply:GetPos() )
 	Unstuck.ToUnstuck[ply].data = Unstuck.AddLayer( ply, ply:GetPos() )

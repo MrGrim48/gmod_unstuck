@@ -15,22 +15,21 @@ function Unstuck.CollisionBoxClear( ply, pos, minBound, maxBound )
 	local filter = {ply}
 	if ply.ph_prop then table.insert( filter, ply.ph_prop ) end
 	
-	local tr = util.TraceHull({
+	local tr = util.TraceEntity({
 		start = pos,
 		endpos = pos,
-		maxs = maxBound,
-		mins = minBound,
 		filter = filter,
-		mask = MASK_ALL
-	})
+		mask = MASK_PLAYERSOLID
+	}, ply)
 	
-	net.Start( "Unstuck.Debug" )
-	net.WriteString( "add" )
-	net.WriteString( "box" )
-	net.WriteVector( pos + minBound )
-	net.WriteVector( pos + maxBound )
-	net.WriteColor( Color(255,255,255) )
-	net.Send( ply )
+	Unstuck.DebugEvent( 
+		ply, 
+		Unstuck.Enumeration.Debug.COMMAND_ADD, 
+		Unstuck.Enumeration.Debug.NOUN_BOX, 
+		pos + minBound, 
+		pos + maxBound, 
+		Color(255,255,255) 
+	)
 	
 	return !tr.StartSolid || !tr.AllSolid
 	
@@ -50,9 +49,7 @@ function Unstuck.Start( ply )
 	end
 	
 	-- Clears the current debug lines
-	net.Start( "Unstuck.Debug" )
-	net.WriteString( "new" )
-	net.Send( ply )
+	Unstuck.DebugEvent( ply, Unstuck.Enumeration.Debug.COMMAND_CLEAR )
 	
 	local minBound, maxBound = ply:GetHull()
 	if !Unstuck.CollisionBoxClear( ply, ply:GetPos(), minBound, maxBound ) then
@@ -64,9 +61,9 @@ function Unstuck.Start( ply )
 		ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You should be unstuck!" )
 	end
 
--- Alert staff of any attempts
+	-- Alert staff of any attempts
 	for k,v in pairs( player.GetAll() ) do
-		if (table.HasValue(Unstuck.AdminRanks, v:GetUserGroup()) || v:IsAdmin() || v:IsSuperAdmin()) && v != ply then
+		if ( table.HasValue( Unstuck.Configuration.AdminRanks, v:GetUserGroup() ) || v:IsAdmin() || v:IsSuperAdmin() ) && v != ply then
 			v:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,0,0), ply:Nick(), Color(255,255,255), " used the Unstuck command." )
 		end
 	end
@@ -80,23 +77,67 @@ end
 hook.Add("PlayerSay", "Unstuck.PlayerSay", function( ply, text )
 	
 	text = string.lower( text )
-	if ( text == "!unstuck" or text == "!stuck" or text == "/stuck" or text == "/unstuck" ) then
-		
-		if DarkRP then				
-			if (ply.isArrested && ply:isArrested()) || (ply.IsArrested && ply:IsArrested()) then
-				ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You are arrested!" )
-				return ""
-			end
+	
+	-- Check for command prefix.
+	if not table.HasValue( 
+		Unstuck.Configuration.Command.Prefix,
+		text:sub( 1, 1 )
+	) then return end
+	
+	-- Check for command string.
+	if not table.HasValue(
+		Unstuck.Configuration.Command.String,
+		text:sub( 2, #text )
+	) then return end
+	
+	
+	if DarkRP then				
+		if (ply.isArrested && ply:isArrested()) || (ply.IsArrested && ply:IsArrested()) then
+			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You are arrested!" )
+			return ""
 		end
-		
-		if (ply.UnstuckCooldown || 0) < CurTime() then
-			ply.UnstuckCooldown = CurTime() + Unstuck.Cooldown
-			Unstuck.Start( ply )
-		else
-			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Cooldown period still active! Wait a bit!" )
-		end
-		
-		return ""
 	end
 	
+	
+	if ( ply.UnstuckCooldown || 0 ) < CurTime() then
+		ply.UnstuckCooldown = CurTime() + Unstuck.Configuration.Cooldown
+		Unstuck.Start( ply )
+	else
+		ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Cooldown period still active! Wait a bit!" )
+	end
+	
+	return ""
+	
 end )
+
+--[[------------------------------------------------
+	Name: Unstuck.DebugEvent()
+	Desc: Primarily to remove duplicated Convar and admin rank checks
+--]]------------------------------------------------
+function Unstuck.DebugEvent( ply, command, noun, vec1, vec2, color )
+	
+	-- If only available to Admins. Return if player is not an admin
+	if Unstuck.Configuration.DebugAdminRanksOnly and
+	not table.HasValue( Unstuck.Configuration.AdminRanks, ply:GetUserGroup() ) then
+		return
+	end
+	
+	-- Return if ConVar is "0"
+	if ply:GetInfo( "unstuck_debug" ) == "0" then return end
+	
+
+	net.Start( "Unstuck.Debug" )
+	net.WriteInt( command, 8 )
+	
+	-- Because we know COMMAND_CLEAR does not need any other arguments
+	if command == Unstuck.Enumeration.Debug.COMMAND_CLEAR then 
+		net.Send( ply )
+		return 
+	end
+	
+	net.WriteInt( noun, 8 )
+	net.WriteVector( vec1 )
+	net.WriteVector( vec2 )
+	net.WriteColor( color )
+	net.Send( ply )
+end

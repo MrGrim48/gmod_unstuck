@@ -22,7 +22,7 @@ end
 local function LoopData( ply, data, depth )
 	
 	if !data then return end
-	if data.data and depth < Unstuck.MaxDepth then --If Another layer exists and less than max depth
+	if data.data and depth < Unstuck.Configuration.MaxDepth then --If Another layer exists and less than max depth
 		if LoopData( ply, data.data, depth+1 ) then
 			data.data = nil
 		end
@@ -38,10 +38,10 @@ local function LoopData( ply, data, depth )
 			Unstuck.ToUnstuck[ply] = nil
 			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Sorry, I failed." )
 			
-			if Unstuck.RespawnOnFail then
-				if Unstuck.RespawnTimer > 0 then
-					ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Respawning in "..Unstuck.RespawnTimer.." seconds." )
-					timer.Simple( Unstuck.RespawnTimer, function()
+			if Unstuck.Configuration.RespawnOnFail then
+				if Unstuck.Configuration.RespawnTimer > 0 then
+					ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Respawning in "..Unstuck.Configuration.RespawnTimer.." seconds." )
+					timer.Simple( Unstuck.Configuration.RespawnTimer, function()
 						SpawnPlayer( ply )
 					end )
 				else
@@ -119,33 +119,38 @@ function Unstuck.FindNewPos( ply, data )
 		startPos.x = math.Clamp( startPos.x, data.origin.x-(0.1), data.origin.x+(0.1) )
 		startPos.y = math.Clamp( startPos.y, data.origin.y-(0.1), data.origin.y+(0.1) )
 		startPos.z = math.Clamp( startPos.z, data.origin.z-(0.1), data.origin.z+(0.1) )
+		
+		-- Center the start position within the hull
+		startPos.z = startPos.z + ((maxBound.z-minBound.z)*0.5)
 	
 		-- Trace to the test position to ensure we don't start getting out of the map
 		local tr = util.TraceLine({
 			start = startPos,
 			endpos = endPos,
 			filter = filter,
-			mask = MASK_ALL
+			mask = MASK_PLAYERSOLID
 		})
 		
 		if !tr.Hit then
 		
-			net.Start( "Unstuck.Debug" )
-			net.WriteString( "add" )
-			net.WriteString( "line" )
-			net.WriteVector( startPos )
-			net.WriteVector( endPos )
-			net.WriteColor( Color( 255,0,0 ) )
-			net.Send( ply )
+			Unstuck.DebugEvent( 
+				ply, 
+				Unstuck.Enumeration.Debug.COMMAND_ADD, 
+				Unstuck.Enumeration.Debug.NOUN_LINE, 
+				startPos, 
+				endPos, 
+				Color( 255,0,0 ) 
+			)
 		
 			if Unstuck.CollisionBoxClear( ply, testPos, minBound, maxBound ) then
-				net.Start( "Unstuck.Debug" )
-				net.WriteString( "add" )
-				net.WriteString( "box" )
-				net.WriteVector( testPos + minBound )
-				net.WriteVector( testPos + maxBound )
-				net.WriteColor( Color( 255,255,0 ) )
-				net.Send( ply )
+				Unstuck.DebugEvent( 
+					ply, 
+					Unstuck.Enumeration.Debug.COMMAND_ADD, 
+					Unstuck.Enumeration.Debug.NOUN_BOX, 
+					testPos + minBound, 
+					testPos + maxBound, 
+					Color( 255,255,0 ) 
+				)	
 			
 				ply:SetPos( testPos )
 				ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You should be unstuck!" )

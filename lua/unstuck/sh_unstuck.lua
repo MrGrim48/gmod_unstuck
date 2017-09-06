@@ -11,18 +11,37 @@ I've done what I can to make this unstuck as least exploitable as I possibly can
 --]]
 
 Unstuck = {}
-Unstuck.RespawnOnFail = true -- If the unstuck fails, the player will be be respawned.
-Unstuck.RespawnTimer = 3 -- The time in seconds between the failed message and respawning the player. 
-Unstuck.Cooldown = 5 -- Cooldown between each unstuck attempt in seconds.
-Unstuck.MaxDepth = 3 -- MaxDepth is related to the line of sight. Initially it's a line of sight 
-	-- from the player to the new position. Incrementing until the max depth, it will
-	-- chain the line of sight from the last possible position.
-	-- Think snake.
-Unstuck.AdminRanks = {
-	"moderator",
-	"admin",
-	"superadmin",
-	"owner",
+Unstuck.Configuration = {
+	Command = {
+		Prefix = { "!", "/" },
+		String = { "stuck", "unstuck" },
+	},
+	
+	AdminRanks = {
+		"moderator",
+		"admin",
+		"superadmin",
+		"owner",
+	},
+	
+	DebugAdminRanksOnly = true, -- Allow the debug information to be sent only to the ranked admins.
+	
+	RespawnOnFail = true, -- If the unstuck fails, the player will be be respawned.
+	RespawnTimer = 3, -- The time in seconds between the failed message and respawning the player. 
+	Cooldown = 5, -- Cooldown between each unstuck attempt in seconds.
+	MaxDepth = 3, -- MaxDepth is related to the line of sight. Initially it's a line of sight 
+		-- from the player to the new position. Incrementing until the max depth, it will
+		-- chain the line of sight from the last possible position.
+		-- Think snake.
+}
+
+Unstuck.Enumeration = {
+	Debug = {
+		COMMAND_ADD = 1,
+		COMMAND_CLEAR = 2,
+		NOUN_BOX = 3,
+		NOUN_LINE = 4
+	}
 }
 
 if SERVER then

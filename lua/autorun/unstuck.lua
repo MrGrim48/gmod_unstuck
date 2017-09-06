@@ -1,6 +1,5 @@
 
 if SERVER then
-	AddCSLuaFile()
 	AddCSLuaFile "unstuck/sh_unstuck.lua"
 	AddCSLuaFile "unstuck/cl_unstuck.lua"
 	

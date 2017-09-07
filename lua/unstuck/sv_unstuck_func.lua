@@ -9,7 +9,7 @@ local function SpawnPlayer( ply )
 		if ply:Alive() then
 			ply:Spawn()
 		else
-			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Respawn canceled. Your are dead." )
+			ply:UnstuckMessage( Unstuck.Enumeration.Message.RESPAWN_FAILED )
 		end
 	end
 end
@@ -28,19 +28,19 @@ local function LoopData( ply, data, depth )
 		end
 	else
 		local result = Unstuck.FindNewPos( ply, data )
-		if result == "passed" then
+		if result == Unstuck.Enumeration.PositionTesting.PASSED then
 			Unstuck.ToUnstuck[ply] = nil
-		elseif result == "end" then
+		elseif result == Unstuck.Enumeration.PositionTesting.FAILED then
 			return true
 		end
 	
 		if Unstuck.ToUnstuck[ply] and !Unstuck.ToUnstuck[ply].data then
 			Unstuck.ToUnstuck[ply] = nil
-			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Sorry, I failed." )
+			ply:UnstuckMessage( Unstuck.Enumeration.Message.FAILED )
 			
 			if Unstuck.Configuration.RespawnOnFail then
 				if Unstuck.Configuration.RespawnTimer > 0 then
-					ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Respawning in "..Unstuck.Configuration.RespawnTimer.." seconds." )
+					ply:UnstuckMessage( Unstuck.Enumeration.Message.RESPAWNING )
 					timer.Simple( Unstuck.Configuration.RespawnTimer, function()
 						SpawnPlayer( ply )
 					end )
@@ -70,8 +70,8 @@ hook.Add( "Think", "Unstuck.Think", Unstuck.Think )
 --[[------------------------------------------------
 	Name: FindNewPos()
 	Desc: Attempts to find a new position to tp to.
-		Returns "passed" if there is a viable postion.
-		Returns "end" if no nearby positions available.
+		Returns PASSED if there is a viable postion.
+		Returns FAILED if no nearby positions available.
 		Creates a new layer of checking if possible.
 --]]------------------------------------------------
 function Unstuck.FindNewPos( ply, data )
@@ -153,8 +153,8 @@ function Unstuck.FindNewPos( ply, data )
 				)	
 			
 				ply:SetPos( testPos )
-				ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You should be unstuck!" )
-				return "passed"
+				ply:UnstuckMessage( Unstuck.Enumeration.Message.UNSTUCK )
+				return Unstuck.Enumeration.PositionTesting.PASSED
 			else
 				--Add new layer to further test
 				data.data = Unstuck.AddLayer( ply, testPos )
@@ -164,11 +164,11 @@ function Unstuck.FindNewPos( ply, data )
 	
 	end
 	
-	-- return end
+	-- return failed
 	if 	data.x > range.x and
 		data.y > range.y and 
 		data.z > range.z then
-			return "end"
+			return Unstuck.Enumeration.PositionTesting.FAILED
 	end
 	
 end

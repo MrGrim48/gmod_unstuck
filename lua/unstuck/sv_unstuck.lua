@@ -44,7 +44,7 @@ function Unstuck.Start( ply )
 
 	-- Fail if the player is in a vehicle, dead or spectating
 	if ply:GetMoveType() == MOVETYPE_OBSERVER || ply:InVehicle() || !ply:Alive() then
-		ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You must be alive and out of vehicles to use this command!" )
+		ply:UnstuckMessage( Unstuck.Enumeration.Message.NOT_ALIVE )
 		return
 	end
 	
@@ -55,16 +55,16 @@ function Unstuck.Start( ply )
 	if !Unstuck.CollisionBoxClear( ply, ply:GetPos(), minBound, maxBound ) then
 		local isNotQueued = Unstuck.Queue( ply ) -- Adds to the unstuck queue
 		if isNotQueued then
-			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You are stuck, trying to free you..." )
+			ply:UnstuckMessage( Unstuck.Enumeration.Message.UNSTUCK_ATTEMPT )
 		end
 	else
-		ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You should be unstuck!" )
+		ply:UnstuckMessage( Unstuck.Enumeration.Message.UNSTUCK )
 	end
 
 	-- Alert staff of any attempts
 	for k,v in pairs( player.GetAll() ) do
 		if ( table.HasValue( Unstuck.Configuration.AdminRanks, v:GetUserGroup() ) || v:IsAdmin() || v:IsSuperAdmin() ) && v != ply then
-			v:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,0,0), ply:Nick(), Color(255,255,255), " used the Unstuck command." )
+			v:UnstuckMessage( Unstuck.Enumeration.Message.ADMIN_NOTIFY, ply )
 		end
 	end
 	
@@ -93,7 +93,7 @@ hook.Add("PlayerSay", "Unstuck.PlayerSay", function( ply, text )
 	
 	if DarkRP then				
 		if (ply.isArrested && ply:isArrested()) || (ply.IsArrested && ply:IsArrested()) then
-			ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "You are arrested!" )
+			ply:UnstuckMessage( Unstuck.Enumeration.Message.ARRESTED )
 			return ""
 		end
 	end
@@ -103,7 +103,7 @@ hook.Add("PlayerSay", "Unstuck.PlayerSay", function( ply, text )
 		ply.UnstuckCooldown = CurTime() + Unstuck.Configuration.Cooldown
 		Unstuck.Start( ply )
 	else
-		ply:UnstuckMessage( Color(255,255,0), "[Unstuck] ", Color(255,255,255), "Cooldown period still active! Wait a bit!" )
+		ply:UnstuckMessage( Unstuck.Enumeration.Message.COOLDOWN )
 	end
 	
 	return ""
@@ -117,13 +117,13 @@ end )
 function Unstuck.DebugEvent( ply, command, noun, vec1, vec2, color )
 	
 	-- If only available to Admins. Return if player is not an admin
-	if Unstuck.Configuration.DebugAdminRanksOnly and
-	not table.HasValue( Unstuck.Configuration.AdminRanks, ply:GetUserGroup() ) then
+	if Unstuck.Configuration.DebugAdminRanksOnly 
+	and	not table.HasValue( Unstuck.Configuration.AdminRanks, ply:GetUserGroup() ) then
 		return
 	end
 	
-	-- Return if ConVar is "0"
-	if ply:GetInfo( "unstuck_debug" ) == "0" then return end
+	-- Return if ConVar is false
+	if ply:GetInfoNum( "unstuck_debug", 0 ) == 0 then return end
 	
 
 	net.Start( "Unstuck.Debug" )

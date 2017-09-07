@@ -132,7 +132,7 @@ if CLIENT then
 			table.Add( message, {Color(255,0,0), ply:Nick()} )
 		end
 		
-		table.insert( message, Color(255,255,255) )
+		table.Add( message, {Color(255,255,255), Unstuck.Dictionary[enumMessage]} )
 		chat.AddText( unpack( message ) )
 	end)
 

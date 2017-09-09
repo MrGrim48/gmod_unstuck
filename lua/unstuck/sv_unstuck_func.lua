@@ -11,12 +11,9 @@ Unstuck.ToUnstuck = {}
 	Desc: Queue a player to be unstuck.
 --]]------------------------------------------------
 function Unstuck.Queue( ply )
-	
 	// Return if the player is already in the queue
 	if table.HasValue( Unstuck.ToUnstuck, ply ) then return end
-	
 	table.insert( Unstuck.ToUnstuck, ply )
-	
 	
 	local minBound, maxBound = ply:GetHull()	
 	Unstuck.DebugEvent( 
@@ -29,7 +26,6 @@ function Unstuck.Queue( ply )
 	)
 	
 	return true
-	
 end
 
 --[[------------------------------------------------
@@ -94,6 +90,7 @@ end
 	Desc: Returns positions that pass a traceline testPos
 		from given position to table of positions.
 --]]------------------------------------------------
+local pairs, table, ents = pairs, table, ents
 local function GetClearPaths( ply, pos, tiles )
 
 	local clearPaths = {}
@@ -137,6 +134,7 @@ end
 	Name: FindNewPos()
 	Desc: 
 --]]------------------------------------------------
+local coroutine = coroutine
 local function FindNewPos( ply, pos, iterNum )
 	
 	local surroundingTiles = GetSurroundingTiles( ply, pos )
@@ -212,21 +210,23 @@ end
 	Name: Think()
 	Desc: Creates the coroutine and processes the queue to unstuck players.
 --]]------------------------------------------------
-local function Think()
-	
-	for key, ply in pairs( Unstuck.ToUnstuck ) do
-		if IsValid( ply ) then			
-			local result = Unstuck.CoroutineNewPos( ply, ply:GetPos(), 1 )
-			
-			if result == Unstuck.Enumeration.PositionTesting.FAILED then
-				ply:UnstuckMessage( Unstuck.Enumeration.Message.FAILED )
-				SpawnPlayer( ply )
+local CurTime, IsValid = CurTime, IsValid
+local nextThink = 0
+hook.Add("Think", "Unstuck.Think", function()
+	if nextThink <= CurTime() then
+		for key, ply in pairs( Unstuck.ToUnstuck ) do
+			if IsValid( ply ) then			
+				local result = Unstuck.CoroutineNewPos( ply, ply:GetPos(), 1 )
+				
+				if result == Unstuck.Enumeration.PositionTesting.FAILED then
+					ply:UnstuckMessage( Unstuck.Enumeration.Message.FAILED )
+					SpawnPlayer( ply )
+				end
+				
+				// Remove the player from the queue
+				Unstuck.ToUnstuck[key] = nil
 			end
-			
-			// Remove the player from the queue
-			Unstuck.ToUnstuck[key] = nil
 		end
+		nextThink = CurTime() + 1
 	end
-
-end
-hook.Add( "Think", "Unstuck.Think", Think )
+end)

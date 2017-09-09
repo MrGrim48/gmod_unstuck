@@ -37,6 +37,7 @@ end
 	Desc: Attempts to start the unstuck process.
 		Will not attempt if the player is in a vehicle, dead or not stuck in the first place.
 --]]------------------------------------------------
+local ipairs = ipairs
 function Unstuck.Start( ply )
 
 	-- Fail if the player is in a vehicle, dead or spectating
@@ -59,8 +60,8 @@ function Unstuck.Start( ply )
 	end
 
 	-- Alert staff of any attempts
-	for k,v in pairs( player.GetAll() ) do
-		if ( table.HasValue( Unstuck.Configuration.AdminRanks, v:GetUserGroup() ) || v:IsAdmin() || v:IsSuperAdmin() ) && v != ply then
+	for k,v in ipairs( player.GetAll() ) do
+		if (Unstuck.Configuration.AdminRanks[v:GetUserGroup()] or v:IsAdmin() or v:IsSuperAdmin()) and v != ply then
 			v:UnstuckMessage( Unstuck.Enumeration.Message.ADMIN_NOTIFY, ply )
 		end
 	end
@@ -71,22 +72,12 @@ end
 	Name: PlayerSay()
 	Desc: Runs Unstuck.Start if the chat command is given and possible.
 --]]------------------------------------------------
+local CurTime = CurTime
 hook.Add("PlayerSay", "Unstuck.PlayerSay", function( ply, text )
-	
 	text = string.lower( text )
-	
-	-- Check for command prefix.
-	if not table.HasValue( 
-		Unstuck.Configuration.Command.Prefix,
-		text:sub( 1, 1 )
-	) then return end
-	
-	-- Check for command string.
-	if not table.HasValue(
-		Unstuck.Configuration.Command.String,
-		text:sub( 2, #text )
-	) then return end
-	
+
+	if Unstuck.Configuration.Command.Prefix[text:sub(1, 1)] then return end -- Check for command prefix.
+	if Unstuck.Configuration.Command.String[text:sub(2, #text)] then return end -- Check for command string.
 	
 	if DarkRP then				
 		if (ply.isArrested && ply:isArrested()) || (ply.IsArrested && ply:IsArrested()) then
@@ -95,15 +86,14 @@ hook.Add("PlayerSay", "Unstuck.PlayerSay", function( ply, text )
 		end
 	end
 	
-	
-	if ( ply.UnstuckCooldown || 0 ) < CurTime() then
+	if ( ply.UnstuckCooldown or 0 ) < CurTime() then
 		ply.UnstuckCooldown = CurTime() + Unstuck.Configuration.Cooldown
 		Unstuck.Start( ply )
 	else
 		ply:UnstuckMessage( Unstuck.Enumeration.Message.COOLDOWN )
 	end
 	
-	return ""
+	return false
 	
 end )
 
@@ -111,18 +101,17 @@ end )
 	Name: Unstuck.DebugEvent()
 	Desc: Primarily to remove duplicated Convar and admin rank checks
 --]]------------------------------------------------
+local net = net
 function Unstuck.DebugEvent( ply, command, noun, vec1, vec2, color )
 	
 	-- If only available to Admins. Return if player is not an admin
-	if Unstuck.Configuration.DebugAdminRanksOnly 
-	and	not table.HasValue( Unstuck.Configuration.AdminRanks, ply:GetUserGroup() ) then
+	if Unstuck.Configuration.DebugAdminRanksOnly and not Unstuck.Configuration.AdminRanks[ply:GetUserGroup()] then
 		return
 	end
 	
 	-- Return if ConVar is false
 	if ply:GetInfoNum( "unstuck_debug", 0 ) == 0 then return end
 	
-
 	net.Start( "Unstuck.Debug" )
 	net.WriteInt( command, 8 )
 	

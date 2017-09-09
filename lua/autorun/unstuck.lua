@@ -1,4 +1,3 @@
-
 if SERVER then
 	AddCSLuaFile "unstuck/sh_unstuck.lua"
 	AddCSLuaFile "unstuck/cl_unstuck_debug.lua"

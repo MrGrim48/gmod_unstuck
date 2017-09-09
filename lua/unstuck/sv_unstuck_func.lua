@@ -3,172 +3,230 @@ sv_unstuck_func.lua
 
 --]]
 
+// The queue of players to unstuck
+Unstuck.ToUnstuck = {}
 
-local function SpawnPlayer( ply )
-	if IsValid(ply) then
-		if ply:Alive() then
-			ply:Spawn()
-		else
-			ply:UnstuckMessage( Unstuck.Enumeration.Message.RESPAWN_FAILED )
-		end
-	end
+--[[------------------------------------------------
+	Name: Unstuck.Queue()
+	Desc: Queue a player to be unstuck.
+--]]------------------------------------------------
+function Unstuck.Queue( ply )
+	
+	// Return if the player is already in the queue
+	if table.HasValue( Unstuck.ToUnstuck, ply ) then return end
+	
+	table.insert( Unstuck.ToUnstuck, ply )
+	
+	
+	local minBound, maxBound = ply:GetHull()	
+	Unstuck.DebugEvent( 
+		ply, 
+		Unstuck.Enumeration.Debug.COMMAND_ADD, 
+		Unstuck.Enumeration.Debug.NOUN_BOX, 
+		ply:GetPos()+minBound, 
+		ply:GetPos()+maxBound, 
+		Color(255,150,150) 
+	)
+	
+	return true
+	
 end
 
 --[[------------------------------------------------
-	Name: LoopData()
-	Desc: If another layer exists within the data table, 
-			it will call LoopData on that data. Inception.
+	Name: SpawnPlayer()
+	Desc: Called when the unstuck function fails to 
+		find a suitable position for the player.
 --]]------------------------------------------------
-local function LoopData( ply, data, depth )
+local function SpawnPlayer( ply )
 	
-	if !data then return end
-	if data.data and depth < Unstuck.Configuration.MaxDepth then --If Another layer exists and less than max depth
-		if LoopData( ply, data.data, depth+1 ) then
-			data.data = nil
-		end
-	else
-		local result = Unstuck.FindNewPos( ply, data )
-		if result == Unstuck.Enumeration.PositionTesting.PASSED then
-			Unstuck.ToUnstuck[ply] = nil
-		elseif result == Unstuck.Enumeration.PositionTesting.FAILED then
-			return true
-		end
+	// Return if the player is not valid
+	if not IsValid(ply) then return end
 	
-		if Unstuck.ToUnstuck[ply] and !Unstuck.ToUnstuck[ply].data then
-			Unstuck.ToUnstuck[ply] = nil
-			ply:UnstuckMessage( Unstuck.Enumeration.Message.FAILED )
-			
-			if Unstuck.Configuration.RespawnOnFail then
-				if Unstuck.Configuration.RespawnTimer > 0 then
-					ply:UnstuckMessage( Unstuck.Enumeration.Message.RESPAWNING )
-					timer.Simple( Unstuck.Configuration.RespawnTimer, function()
-						SpawnPlayer( ply )
-					end )
+	// Respawn the player if enabled in the configuration
+	if Unstuck.Configuration.RespawnOnFail then
+	
+		// Set a timer or repawn instantly
+		if Unstuck.Configuration.RespawnTimer > 0 then
+			ply:UnstuckMessage( Unstuck.Enumeration.Message.RESPAWNING )
+			timer.Simple( Unstuck.Configuration.RespawnTimer, function()
+				if ply:Alive() then
+					ply:Spawn()
 				else
-					SpawnPlayer( ply )
+					ply:UnstuckMessage( Unstuck.Enumeration.Message.RESPAWN_FAILED )
 				end
+			end )
+		else
+			ply:Spawn()
+		end
+	end
+	
+end
+
+--[[------------------------------------------------
+	Name: GetSurroundingTiles()
+	Desc: Returns the positions surrounding 
+		the given position based on the 'MinCheckRange'
+--]]------------------------------------------------
+local function GetSurroundingTiles( ply, pos )
+
+	local tiles = {}
+	local x, y, z
+	local minBound, maxBound = ply:GetHull()
+	local checkRange = math.max(Unstuck.Configuration.MinCheckRange, maxBound.x, maxBound.y)
+	
+	for z = -1, 1, 1 do
+		for y = -1, 1, 1 do
+			for x = -1, 1, 1 do
+				local testTile = Vector(x,y,z)
+				testTile:Mul( checkRange )
+				local tilePos = pos + testTile
+				table.insert( tiles, tilePos )
 			end
 		end
 	end
+	
+	return tiles
+
+end
+
+--[[------------------------------------------------
+	Name: GetClearPaths()
+	Desc: Returns positions that pass a traceline testPos
+		from given position to table of positions.
+--]]------------------------------------------------
+local function GetClearPaths( ply, pos, tiles )
+
+	local clearPaths = {}
+
+	// Trace to the positions to ensure we don't start getting out of the map
+	local filter = player.GetAll()
+	table.Add( filter, ents.FindByClass( "prop_physics" ) )
+	table.Add( filter, ents.FindByClass( "prop_physics_multiplayer" ) )
+	table.Add( filter, ents.FindByClass( "ph_prop" ) )
+	table.Add( filter, ents.FindByClass( "func_door" ) )
+	table.Add( filter, ents.FindByClass( "prop_door_rotating" ) )
+	table.Add( filter, ents.FindByClass( "func_door_rotating" ) )
+	
+	for _, tile in pairs( tiles ) do
+		local tr = util.TraceLine({
+			start = pos,
+			endpos = tile,
+			filter = filter,
+			mask = MASK_PLAYERSOLID
+		})
+		
+		if not tr.Hit and util.IsInWorld(tile) then
+			Unstuck.DebugEvent( 
+				ply, 
+				Unstuck.Enumeration.Debug.COMMAND_ADD, 
+				Unstuck.Enumeration.Debug.NOUN_LINE, 
+				pos, 
+				tile, 
+				Color( 255,0,0 ) 
+			)
+			
+			table.insert( clearPaths, tile )
+		end
+	end
+	
+	return clearPaths
+	
+end
+
+--[[------------------------------------------------
+	Name: FindNewPos()
+	Desc: 
+--]]------------------------------------------------
+local function FindNewPos( ply, pos, iterNum )
+	
+	local surroundingTiles = GetSurroundingTiles( ply, pos )
+	local clearPaths = GetClearPaths( ply, pos, surroundingTiles )	
+	
+	// We check if we can move the player to any of these positions.
+	local minBound, maxBound = ply:GetHull()
+	for _, tile in pairs( clearPaths ) do
+		coroutine.yield()
+		
+		if Unstuck.CollisionBoxClear( ply, tile, minBound, maxBound ) then
+			Unstuck.DebugEvent( 
+				ply, 
+				Unstuck.Enumeration.Debug.COMMAND_ADD, 
+				Unstuck.Enumeration.Debug.NOUN_BOX, 
+				tile + minBound, 
+				tile + maxBound, 
+				Color( 255,255,0 ) 
+			)	
+			
+			ply:SetPos( tile )
+			ply:UnstuckMessage( Unstuck.Enumeration.Message.UNSTUCK )
+			coroutine.yield( Unstuck.Enumeration.PositionTesting.PASSED )
+		end
+	end
+	
+	
+	// Check that we can start a new iteration
+	if (iterNum + 1) > Unstuck.Configuration.MaxIteration then
+		coroutine.yield( Unstuck.Enumeration.PositionTesting.FAILED )
+	end
+	
+	
+	// If no positions are found, we create a new iteration at each of the clear paths.
+	for _, tile in pairs( clearPaths ) do
+		coroutine.yield()
+		
+		local result = Unstuck.CoroutineNewPos( ply, tile, iterNum+1 )
+		
+		// If a position is found, return a success to end the loop
+		if result == Unstuck.Enumeration.PositionTesting.PASSED then
+			coroutine.yield( Unstuck.Enumeration.PositionTesting.PASSED )
+		end
+	end
+	
+	
+	// Return FAILED if no positions are found
+	coroutine.yield( Unstuck.Enumeration.PositionTesting.FAILED )
+	
+end
+
+--[[------------------------------------------------
+	Name: Unstuck.CoroutineNewPos()
+	Desc: Creates a new coroutine for each iteration of the FindNewPos function.
+--]]------------------------------------------------
+function Unstuck.CoroutineNewPos( ply, pos, iterNum )
+
+	local newPosCoroutine = coroutine.create( FindNewPos )
+	local NoError, NewPosResult
+	
+	// Repeat until a Pass or Fail is returned or until the end of the iteration.
+	repeat
+		NoError, NewPosResult = coroutine.resume( newPosCoroutine, ply, pos, iterNum )
+	until ( NewPosResult == Unstuck.Enumeration.PositionTesting.FAILED 
+		or NewPosResult == Unstuck.Enumeration.PositionTesting.PASSED
+		or not NoError )
+		
+	return NewPosResult
 	
 end
 
 --[[------------------------------------------------
 	Name: Think()
-	Desc: Spreads the unstuck check with the use of the think hook.
-		This should minimize the performance impact on the server.
+	Desc: Creates the coroutine and processes the queue to unstuck players.
 --]]------------------------------------------------
-function Unstuck.Think()
-
-	for ply, data in pairs( Unstuck.ToUnstuck ) do
-		LoopData( ply, data, 1 )
-	end
-
-end
-hook.Add( "Think", "Unstuck.Think", Unstuck.Think )
-
---[[------------------------------------------------
-	Name: FindNewPos()
-	Desc: Attempts to find a new position to tp to.
-		Returns PASSED if there is a viable postion.
-		Returns FAILED if no nearby positions available.
-		Creates a new layer of checking if possible.
---]]------------------------------------------------
-function Unstuck.FindNewPos( ply, data )
+local function Think()
 	
-	local minBound, maxBound = ply:GetHull()
-	local range = { x=32, y=32, z=32 }
-	local testPos
-	
-	-- Filter is for the trace line. Further checks will be made if the trace line passes.
-	local filter = player.GetAll()
-	table.Add( filter, ents.FindByClass( "prop_physics" ) )
-	table.Add( filter, ents.FindByClass( "prop_physics_multiplayer" ) )
-	table.Add( filter, ents.FindByClass( "ph_prop" ) )
-	table.Add( filter, ents.FindByClass( "ph_dummy" ) )
-	table.Add( filter, ents.FindByClass( "func_door" ) )
-	table.Add( filter, ents.FindByClass( "prop_door_rotating" ) )
-	table.Add( filter, ents.FindByClass( "func_door_rotating" ) )
-	
-	-- Attempt to ignore previously checked positions
-	repeat
-		if data.x <= range.x then
-			if data.x >= 0 then data.x = data.x + range.x end
-			data.x = -data.x 
-		elseif data.y <= range.y then
-			data.x = 0
-			if data.y >= 0 then data.y = data.y + range.y end
-			data.y = -data.y
-		elseif data.z <= range.z then
-			data.y = 0
-			if data.z >= 0 then data.z = data.z + range.z end
-			data.z = -data.z
-		end
-		
-		testPos = Vector( math.Round(data.origin.x+data.x), math.Round(data.origin.y+data.y), math.Round(data.origin.z+data.z) )
-	until !Unstuck.ToUnstuck[ply].CheckedPos[testPos]
-	Unstuck.ToUnstuck[ply].CheckedPos[testPos] = true
-	
-	if util.IsInWorld( testPos ) then 
-	
-		local startPos = testPos + Vector(0,0,(maxBound.z-minBound.z)*0.5)
-		local endPos = testPos + Vector(0,0,(maxBound.z-minBound.z)*0.5)
-		
-		-- This will simply have the starting position for the trace on the side of a players hull.
-		-- Doing so should allow the trace to not fail if the player is more than half into the wall.
-		startPos.x = math.Clamp( startPos.x, data.origin.x-(0.1), data.origin.x+(0.1) )
-		startPos.y = math.Clamp( startPos.y, data.origin.y-(0.1), data.origin.y+(0.1) )
-		startPos.z = math.Clamp( startPos.z, data.origin.z-(0.1), data.origin.z+(0.1) )
-		
-		-- Center the start position within the hull
-		startPos.z = startPos.z + ((maxBound.z-minBound.z)*0.5)
-	
-		-- Trace to the test position to ensure we don't start getting out of the map
-		local tr = util.TraceLine({
-			start = startPos,
-			endpos = endPos,
-			filter = filter,
-			mask = MASK_PLAYERSOLID
-		})
-		
-		if !tr.Hit then
-		
-			Unstuck.DebugEvent( 
-				ply, 
-				Unstuck.Enumeration.Debug.COMMAND_ADD, 
-				Unstuck.Enumeration.Debug.NOUN_LINE, 
-				startPos, 
-				endPos, 
-				Color( 255,0,0 ) 
-			)
-		
-			if Unstuck.CollisionBoxClear( ply, testPos, minBound, maxBound ) then
-				Unstuck.DebugEvent( 
-					ply, 
-					Unstuck.Enumeration.Debug.COMMAND_ADD, 
-					Unstuck.Enumeration.Debug.NOUN_BOX, 
-					testPos + minBound, 
-					testPos + maxBound, 
-					Color( 255,255,0 ) 
-				)	
+	for key, ply in pairs( Unstuck.ToUnstuck ) do
+		if IsValid( ply ) then			
+			local result = Unstuck.CoroutineNewPos( ply, ply:GetPos(), 1 )
 			
-				ply:SetPos( testPos )
-				ply:UnstuckMessage( Unstuck.Enumeration.Message.UNSTUCK )
-				return Unstuck.Enumeration.PositionTesting.PASSED
-			else
-				--Add new layer to further test
-				data.data = Unstuck.AddLayer( ply, testPos )
-				
+			if result == Unstuck.Enumeration.PositionTesting.FAILED then
+				ply:UnstuckMessage( Unstuck.Enumeration.Message.FAILED )
+				SpawnPlayer( ply )
 			end
-		end	
-	
+			
+			// Remove the player from the queue
+			Unstuck.ToUnstuck[key] = nil
+		end
 	end
-	
-	-- return failed
-	if 	data.x > range.x and
-		data.y > range.y and 
-		data.z > range.z then
-			return Unstuck.Enumeration.PositionTesting.FAILED
-	end
-	
+
 end
+hook.Add( "Think", "Unstuck.Think", Think )

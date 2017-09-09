@@ -8,9 +8,6 @@ sv_unstuck.lua
 	Desc: Returns true if the players Bounding Box fits at the given position.
 --]]------------------------------------------------
 function Unstuck.CollisionBoxClear( ply, pos, minBound, maxBound )
-
-	maxBound.z = maxBound.z - minBound.z
-	minBound.z = 0
 	
 	local filter = {ply}
 	if ply.ph_prop then table.insert( filter, ply.ph_prop ) end
@@ -140,4 +137,6 @@ function Unstuck.DebugEvent( ply, command, noun, vec1, vec2, color )
 	net.WriteVector( vec2 )
 	net.WriteColor( color )
 	net.Send( ply )
+	
+	return true
 end

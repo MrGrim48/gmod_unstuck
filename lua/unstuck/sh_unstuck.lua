@@ -37,11 +37,14 @@ Unstuck.Configuration = {
 	// Cooldown between each unstuck attempt in seconds.
 	Cooldown = 5,
 	
-	// MaxDepth is related to the line of sight. Initially it's a line of sight 
-	// from the player to the new position. Incrementing until the max depth, it will
-	// chain the line of sight from the last possible position.
-	// Beter description needed. Will wait until after changes made to the algorithm.
-	MaxDepth = 3, 
+	// How many iterations of position checking. Initial iteration is to check the surrounding player.
+	// Every iteration after that checks the surrounding checked positions.
+	// This has an exponential curve of run time needed and would be advised of no more than 4.
+	MaxIteration = 3, 
+	
+	// The minimum distance from the player when checking for new positions to move to.
+	// The addon would otherwise use a value based on the players hull if it's greater than this value.
+	MinCheckRange = 32,
 }
 
 

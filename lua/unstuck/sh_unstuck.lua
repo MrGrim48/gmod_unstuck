@@ -14,16 +14,16 @@ Unstuck.Configuration = {
 
 	// The chat command for players to use.
 	Command = {
-		Prefix = { ["!"] = true, ["/"] = true },
-		String = { ["stuck"] = true, ["unstuck"] = true },
+		Prefix = { "!", "/" },
+		String = { "stuck", "unstuck" },
 	},
 	
 	// Admins will be notified when a player attemps to use the Unstuck function.
 	AdminRanks = {
-		["moderator"] = true,
-		["admin"] = true,
-		["superadmin"] = true,
-		["owner"] = true,
+		"moderator",
+		"admin",
+		"superadmin",
+		"owner",
 	},
 	
 	// Allow the debug information to be sent only to the ranked admins.

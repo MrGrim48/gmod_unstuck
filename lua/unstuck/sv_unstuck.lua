@@ -75,8 +75,17 @@ hook.Add("PlayerSay", "Unstuck.PlayerSay", function( ply, text )
 	
 	text = string.lower( text )
 		
-	if not Unstuck.Configuration.Command.Prefix[text:sub(1, 1)] then return end -- Check for command prefix.
-	if not Unstuck.Configuration.Command.String[text:sub(2, #text)] then return end -- Check for command string.
+	-- Check for command prefix.
+	if not table.HasValue( 
+		Unstuck.Configuration.Command.Prefix,
+		text:sub( 1, 1 )
+	) then return end
+
+	-- Check for command string.
+	if not table.HasValue(
+		Unstuck.Configuration.Command.String,
+		text:sub( 2, #text )
+	) then return end
 	
 	
 	if DarkRP then				

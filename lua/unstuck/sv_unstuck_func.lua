@@ -10,13 +10,13 @@ Unstuck.ToUnstuck = {}
 	Name: Unstuck.Queue()
 	Desc: Queue a player to be unstuck.
 --]]------------------------------------------------
+local color = Color(255,150,150) 
 function Unstuck.Queue( ply )
 	
 	// Return if the player is already in the queue
 	if table.HasValue( Unstuck.ToUnstuck, ply ) then return end
 	
-	table.insert( Unstuck.ToUnstuck, ply )
-	
+	Unstuck.ToUnstuck[#Unstuck.ToUnstuck + 1] = ply
 	
 	local minBound, maxBound = ply:GetHull()	
 	Unstuck.DebugEvent( 
@@ -25,7 +25,7 @@ function Unstuck.Queue( ply )
 		Unstuck.Enumeration.Debug.NOUN_BOX, 
 		ply:GetPos()+minBound, 
 		ply:GetPos()+maxBound, 
-		Color(255,150,150) 
+		color
 	)
 	
 	return true
@@ -80,7 +80,7 @@ local function GetSurroundingTiles( ply, pos )
 				local testTile = Vector(x,y,z)
 				testTile:Mul( checkRange )
 				local tilePos = pos + testTile
-				table.insert( tiles, tilePos )
+				tiles[#tiles + 1] = tilePos
 			end
 		end
 	end
@@ -94,6 +94,7 @@ end
 	Desc: Returns positions that pass a traceline testPos
 		from given position to table of positions.
 --]]------------------------------------------------
+local color2 = Color( 255,0,0 ) 
 local function GetClearPaths( ply, pos, tiles )
 
 	local clearPaths = {}
@@ -122,10 +123,10 @@ local function GetClearPaths( ply, pos, tiles )
 				Unstuck.Enumeration.Debug.NOUN_LINE, 
 				pos, 
 				tile, 
-				Color( 255,0,0 ) 
+				color2
 			)
 			
-			table.insert( clearPaths, tile )
+			clearPaths[#clearPaths + 1] = tile
 		end
 	end
 	
@@ -137,6 +138,7 @@ end
 	Name: FindNewPos()
 	Desc: 
 --]]------------------------------------------------
+local color3 = Color( 255,255,0 ) 
 local function FindNewPos( ply, pos, iterNum )
 	
 	coroutine.yield()
@@ -156,7 +158,7 @@ local function FindNewPos( ply, pos, iterNum )
 				Unstuck.Enumeration.Debug.NOUN_BOX, 
 				tile + minBound, 
 				tile + maxBound, 
-				Color( 255,255,0 ) 
+				color3
 			)	
 			
 			ply:SetPos( tile )
